@@ -1,0 +1,285 @@
+---
+#- debug:
+#    msg: "{% if ansible_forced_ip|replace(' ', '') != '' %}{{ansible_forced_ip}}{% else %}{{ansible_host}}{% endif %}"
+#- debug:
+#    msg: "global inventory file : {{global_inventory}}"
+
+#- debug:
+#     var: hostvars
+
+- name: "Save host ssh link configuration : ansible_host"
+  lineinfile:
+    path: host_vars/{{ansible_host}}
+    regexp: 'ansible_host:'
+    line: 'ansible_host: "{{ansible_host}}"'
+    backup: yes
+    create: yes
+    state: present
+  delegate_to: 127.0.0.1
+  run_once: true
+  become: no
+  when: ansible_host != "localhost"
+
+- name: "Save localhost connection mode to : local"
+  lineinfile:
+    path: host_vars/{{ansible_host}}
+    regexp: 'ansible_connection:'
+    line: 'ansible_connection: "local"'
+    backup: yes
+    create: yes
+    state: present
+  delegate_to: 127.0.0.1
+  run_once: true
+  become: no
+  when: ansible_host == "localhost"
+
+# We keep ansible_forced_ip in order to be able to generate ssh_config that will connect to the forced IP :
+- name: "Save host ssh link configuration : ansible_forced_ip"
+  lineinfile:
+    path: host_vars/{{ansible_host}}
+    regexp: 'ansible_forced_ip:'
+    line: 'ansible_forced_ip: "{{ ansible_forced_ip }}"'
+    backup: yes
+    create: yes
+    state: present
+  delegate_to: 127.0.0.1
+  run_once: true
+  become: no
+  when:
+    - ansible_forced_ip is defined and ansible_forced_ip != ""
+    - ansible_host != "localhost"
+
+- name: "Save host ssh link configuration : ansible_port"
+  lineinfile:
+    path: host_vars/{{ansible_host}}
+    regexp: 'ansible_port:'
+    line: 'ansible_port: "{{ ansible_port }}"'
+    backup: yes
+    create: yes
+    state: present
+  delegate_to: 127.0.0.1
+  run_once: true
+  become: no
+  when:
+    - ansible_port is defined and ansible_port != ""
+    - ansible_host != "localhost"
+
+- name: "Save host ssh link configuration : ansible_user"
+  lineinfile:
+    path: host_vars/{{ansible_host}}
+    regexp: 'ansible_user:'
+    line: 'ansible_user: "{{ nextcons_ansible_user }}"'
+    backup: yes
+    create: yes
+    state: present
+  delegate_to: 127.0.0.1
+  run_once: true
+  become: no
+  when: nextcons_ansible_user is defined and nextcons_ansible_user != ''
+
+- name: "Save hos ssh connection sudo : ansible_become"
+  lineinfile:
+    path: host_vars/{{ansible_host}}
+    regexp: 'ansible_become:'
+    line: 'ansible_become: "true"'
+    backup: yes
+    create: yes
+    state: present
+  delegate_to: 127.0.0.1
+  run_once: true
+  become: no
+  when: nextcons_ansible_become is defined and nextcons_ansible_become == 'yes'
+
+- name: "Save host ssh link configuration : become_pass"
+  lineinfile:
+    path: host_vars/{{ansible_host}}
+    regexp: 'become_pass:'
+    line: 'become_pass: "{{ nextcons_become_pass }}"'
+    backup: yes
+    create: yes
+    state: present
+  delegate_to: 127.0.0.1
+  run_once: true
+  become: no
+  when: nextcons_become_pass is defined and nextcons_become_pass != ''
+
+- name: "Save host users/groups/sudoers synchronisation option : ugs_synchronisation"
+  lineinfile:
+    path: host_vars/{{ansible_host}}
+    regexp: 'ugs_synchronisation:'
+    line: 'ugs_synchronisation: "{{ ugs_synchronisation }}"'
+    backup: yes
+    create: yes
+    state: present
+  delegate_to: 127.0.0.1
+  run_once: true
+  become: no
+  when: ugs_synchronisation is defined and ugs_synchronisation != ''
+
+# not using -H until ssh-keyscan bug is resolved, see :
+# https://bugs.launchpad.net/ubuntu/+source/openssh/+bug/1670745
+#  https://github.com/ansible/ansible-modules-extras/issues/2651
+#  shell: ssh-keyscan -t dsa -p {{ ansible_port }} -H -T 5 "{% if ansible_forced_ip is defined and ansible_forced_ip != '' %}{{ansible_forced_ip}}{% else %}{{ansible_host}}{% endif %}" 2>/dev/null
+- name: "Scan host SSH server public key : dsa"
+  shell: ssh-keyscan -t dsa -H -p {{ ansible_port }} -T 5 "{% if ansible_forced_ip is defined and ansible_forced_ip != '' %}{{ansible_forced_ip}}{% else %}{{ansible_host}}{% endif %}" 2>/dev/null
+  register: ssh_keyscan
+  delegate_to: 127.0.0.1
+  run_once: true
+  become: no
+  when: ansible_host != "localhost"
+
+- debug:
+    msg: "Key : {{ ssh_keyscan.stdout_lines[0] }}"
+
+- name: "Store host SSH server public key : dsa"
+  lineinfile:
+    path: host_vars/{{ansible_host}}
+    regexp: 'sshdpubkey_dsa:'
+    line: 'sshdpubkey_dsa: "{{ ssh_keyscan.stdout_lines[0] }}"'
+    backup: yes
+    create: yes
+    state: present
+  delegate_to: 127.0.0.1
+  run_once: true
+  become: no
+  when:
+    - ansible_host != "localhost"
+    - ssh_keyscan.stdout_lines[0] is defined and ssh_keyscan.stdout_lines[0] != ''
+
+- name: "Scan host SSH server public key : ecdsa"
+  shell: ssh-keyscan -t ecdsa -H -p {{ ansible_port }} -T 5 "{% if ansible_forced_ip is defined and ansible_forced_ip != '' %}{{ansible_forced_ip}}{% else %}{{ansible_host}}{% endif %}" 2>/dev/null
+  register: ssh_keyscan
+  delegate_to: 127.0.0.1
+  run_once: true
+  become: no
+  when: ansible_host != "localhost"
+
+- name: "Store host SSH server public key : ecdsa"
+  lineinfile:
+    path: host_vars/{{ansible_host}}
+    regexp: 'sshdpubkey_ecdsa:'
+    line: 'sshdpubkey_ecdsa: "{{ssh_keyscan.stdout_lines[0]}}"'
+    backup: yes
+    create: yes
+    state: present
+  delegate_to: 127.0.0.1
+  run_once: true
+  become: no
+  when:
+    - ansible_host != "localhost"
+    - ssh_keyscan.stdout_lines[0] is defined and ssh_keyscan.stdout_lines[0] != ''
+
+- name: "Scan host SSH server public key : ed25519"
+  shell: ssh-keyscan -t ed25519 -H -p {{ ansible_port }} -T 5 "{% if ansible_forced_ip is defined and ansible_forced_ip != '' %}{{ansible_forced_ip}}{% else %}{{ansible_host}}{% endif %}" 2>/dev/null
+  register: ssh_keyscan
+  delegate_to: 127.0.0.1
+  become: no
+  when: ansible_host != "localhost"
+
+- name: "Store host SSH server public key : ed25519"
+  lineinfile:
+    path: host_vars/{{ansible_host}}
+    regexp: 'sshdpubkey_ed25519:'
+    line: 'sshdpubkey_ed25519: "{{ssh_keyscan.stdout_lines[0]}}"'
+    backup: yes
+    create: yes
+    state: present
+  delegate_to: 127.0.0.1
+  run_once: true
+  become: no
+  when:
+    - ansible_host != "localhost"
+    - ssh_keyscan.stdout_lines[0] is defined and ssh_keyscan.stdout_lines[0] != ''
+
+- name: "Scan host SSH server public key : rsa"
+  shell: ssh-keyscan -t rsa -H -p {{ ansible_port }} -T 5 "{% if ansible_forced_ip is defined and ansible_forced_ip != '' %}{{ansible_forced_ip}}{% else %}{{ansible_host}}{% endif %}" 2>/dev/null
+  register: ssh_keyscan
+  delegate_to: 127.0.0.1
+  run_once: true
+  become: no
+  when: ansible_host != "localhost"
+
+- name: "Store host SSH server public key : rsa"
+  lineinfile:
+    path: host_vars/{{ansible_host}}
+    regexp: 'sshdpubkey_rsa:'
+    line: 'sshdpubkey_rsa: "{{ssh_keyscan.stdout_lines[0]}}"'
+    backup: yes
+    create: yes
+    state: present
+  delegate_to: 127.0.0.1
+  run_once: true
+  become: no
+  when:
+    - ansible_host != "localhost"
+    - ssh_keyscan.stdout_lines[0] is defined and ssh_keyscan.stdout_lines[0] != ''
+
+- debug:
+    msg: "ssh-keyscan -t rsa -H -p {{ ansible_port }} -T 5 {% if ansible_forced_ip is defined and ansible_forced_ip != '' %}{{ansible_forced_ip}}{% else %}{{ansible_host}}{% endif %} 2>/dev/null"
+
+- name: "Store host in the all inventory file"
+  lineinfile:
+    path: "{{ global_inventory }}"
+    line: '{{ ansible_host }}'
+    backup: yes
+    create: yes
+    state: present
+  delegate_to: 127.0.0.1
+  run_once: true
+  become: no
+
+- name: "Make sure that defined group inventory file is created with header"
+  lineinfile:
+    path: "{{ ( inventory_directory ~ '/' ~ nextcons_ansible_group ~ '.inventory' ) | replace ('//', '/') }}"
+    insertbefore: BOF
+    line: '[{{ nextcons_ansible_group }}]'
+    backup: yes
+    create: yes
+    state: present
+  delegate_to: 127.0.0.1
+  run_once: true
+  become: no
+  when:
+    - nextcons_ansible_group is defined and nextcons_ansible_group != ""
+    - nextcons_ansible_group != 'all'
+
+- name: "Make sure that defined group inventory file is created with header"
+  lineinfile:
+    path: "{{ ( inventory_directory ~ '/' ~ nextcons_ansible_group ~ '.inventory' ) | replace ('//', '/') }}"
+    insertbefore: BOF
+    line: '[all]'
+    backup: yes
+    create: yes
+    state: present
+  delegate_to: 127.0.0.1
+  run_once: true
+  become: no
+  when:
+    - nextcons_ansible_group is defined and nextcons_ansible_group != ""
+    - nextcons_ansible_group == 'all'
+
+- name: "Make sure that host is present in group inventory file"
+  lineinfile:
+    path: "{{ ( inventory_directory ~ '/' ~ nextcons_ansible_group ~ '.inventory' ) | replace ('//', '/') }}"
+    insertbefore: EOF
+    line: '{{ ansible_host }}'
+    backup: yes
+    create: yes
+    state: present
+  delegate_to: 127.0.0.1
+  run_once: true
+  become: no
+  when: nextcons_ansible_group is defined and nextcons_ansible_group != ""
+
+- name: "Remove host to add from removed hosts inventory file"
+  lineinfile:
+    dest: "{{removed_hosts_inventory}}"
+    line: "{{ansible_host}}"
+    backup: yes
+    create: yes
+    state: absent
+  delegate_to: 127.0.0.1
+  run_once: true
+  become: no
+
+...

@@ -1,0 +1,4 @@
+---
+inventory_directory: 'inventory/'
+removed_hosts_inventory: "inventory/removed.inventory"
+...

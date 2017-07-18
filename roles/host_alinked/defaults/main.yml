@@ -1,0 +1,5 @@
+---
+inventory_directory: 'inventory/'
+global_inventory: 'inventory/all.inventory'
+removed_hosts_inventory: "inventory/removed.inventory"
+...

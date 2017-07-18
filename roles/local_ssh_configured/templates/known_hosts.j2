@@ -1,0 +1,4 @@
+# {{ ansible_managed }}
+{% for sshkey in all_known_hosts_ssh_public_keys %}
+{{ sshkey }}
+{% endfor %}

@@ -1,0 +1,21 @@
+---
+staging_packages:
+  - vim
+  - sysstat
+  - atop
+  - jnettop
+  - htop
+  - less
+  - iotop
+  - screen
+  - bootlogd
+  - apt-dater-host
+  - rsync
+
+apply_template_search_paths:
+  - '{{ ansible_distribution | lower }}-{{ ansible_distribution_version | lower }}'
+  - '{{ ansible_distribution | lower }}-{{ ansible_distribution_major_version | lower }}'
+  - '{{ ansible_distribution | lower }}'
+  - '{{ ansible_os_family | lower }}'
+  - '{{ ansible_system | lower }}'
+  - '.'

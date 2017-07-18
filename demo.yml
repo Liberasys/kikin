@@ -1,0 +1,19 @@
+---
+
+- hosts: all:!removed
+  name: configure users
+  roles:
+    - { role: users_configured }
+    - { role: local_ssh_configured }
+    - { role: staging }
+  tags:
+    - users
+
+
+
+
+
+
+
+
+...

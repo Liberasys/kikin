@@ -1,0 +1,80 @@
+---
+- name: "Create removed hosts inventory file"
+  lineinfile:
+    dest: "{{removed_hosts_inventory}}"
+    line: "[removed]"
+    insertbefore: BOF
+    backup: yes
+    create: yes
+    state: present
+  delegate_to: 127.0.0.1
+  run_once: true
+  become: no
+
+- name: "Compute date-time tag"
+  command: date "+%Y%m%d-%H%M%S"
+  register: datetime_tag
+  changed_when: False
+  delegate_to: 127.0.0.1
+  become: no
+
+- name: "Add host to remove in removed hosts inventory file"
+  lineinfile:
+    dest: "{{removed_hosts_inventory}}"
+    line: "{{host2del}} removed_date={{datetime_tag.stdout}}"
+    backup: yes
+    create: yes
+    state: present
+  delegate_to: 127.0.0.1
+  run_once: true
+  become: no
+  when: host2del is defined
+
+- name: "Remove host_vars file"
+  file:
+    path: "host_vars/{{item}}"
+    state: absent
+  delegate_to: 127.0.0.1
+  run_once: true
+  become: no
+  with_lines: cat "{{removed_hosts_inventory}}"
+
+- name: "List of the inventory files and store it in register"
+  shell: find {{inventory_directory}} -type f -name '*.inventory' | grep -v {{removed_hosts_inventory}}
+  register: inventory_files_list
+  delegate_to: 127.0.0.1
+  run_once: true
+  become: no
+  changed_when: false
+
+#- debug:
+#    msg: "List of inventory files : {{inventory_files_list.stdout_lines}}"
+
+#- debug:
+#    msg: '{{ host2del | replace(''.'', ''\.'') }}'
+
+#- debug:
+#    msg: "cat {{removed_hosts_inventory}}"
+
+- name: "Get unlinked hosts list"
+  command: cat {{removed_hosts_inventory}}
+  register: removed_hosts_list
+  delegate_to: 127.0.0.1
+  run_once: true
+  become: no
+  changed_when: false
+
+- name: "Remove hosts from inventory files"
+  lineinfile:
+    dest: "{{item[0]}}"
+    regexp: '^ *{{ item[1] | replace(".", "\.") }}$'
+    backup: yes
+    state: absent
+  delegate_to: 127.0.0.1
+  run_once: true
+  become: no
+  with_nested:
+    - "{{inventory_files_list.stdout_lines}}"
+    - "{{removed_hosts_list.stdout_lines}}"
+
+...

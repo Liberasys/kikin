@@ -1,0 +1,107 @@
+---
+
+## for the moment, only Debian package manager is used.
+- name: Assert if not Debian
+  assert: { that: "ansible_os_family == 'Debian'" }
+
+- name: Assert if not apt package manager
+  assert: { that: "ansible_pkg_mgr == 'apt'" }
+
+- name: Install base packages - software staging
+  apt:
+    name: "{{ item }}"
+    state: "latest"
+    update_cache: "yes"
+  with_flattened: "{{staging_packages}}"
+
+
+- name: Apply /root/.bashrc template
+  template:
+    src: "{{item}}"
+    dest: "/root/.bashrc"
+    backup: "yes"
+    owner: "root"
+    group: "root"
+    mode: "0644"
+  with_first_found:
+    - files:
+      - "bashrc.j2"
+      paths: "{{ apply_template_search_paths }}"
+
+
+- name: Apply /etc/vim/vimrc template
+  template:
+    src: "{{item}}"
+    dest: "/etc/vim/vimrc"
+    backup: "yes"
+    owner: "root"
+    group: "root"
+    mode: "0644"
+  with_first_found:
+    - files:
+      - "vimrc.j2"
+      paths: "{{ apply_template_search_paths }}"
+
+
+- name: Apply /etc/sysctl.conf template
+  template:
+    src: "{{item}}"
+    dest: "/etc/sysctl.conf"
+    backup: "yes"
+    owner: "root"
+    group: "root"
+    mode: "0644"
+  with_first_found:
+    - files:
+      - "sysctl.j2"
+      paths: "{{ apply_template_search_paths }}"
+  register: sysctl_result
+
+- name: Update kernel variables from sysctl.conf
+  shell: sysctl -p
+  changed_when: True
+  when: sysctl_result.changed == True
+
+
+- name: Apply /etc/default/grub template
+  template:
+    src: "{{item}}"
+    dest: "/etc/default/grub"
+    backup: "yes"
+    owner: "root"
+    group: "root"
+    mode: "0644"
+  with_first_found:
+    - files:
+      - "grub.j2"
+      paths: "{{ apply_template_search_paths }}"
+  register: grub_result
+
+- name: Update grub boot loader
+  shell: update-grub
+  changed_when: True
+  when: grub_result.changed == True
+
+
+- name: Do not use reverse DNS in SSHD
+  lineinfile:
+    dest: "/etc/ssh/sshd_config"
+    regexp: "^UseDNS "
+    line: "UseDNS no"
+    insertafter: "OEF"
+  register: sshd_result
+
+- name: Restart SSHD
+  service:
+    name: "sshd"
+    state: "restarted"
+  when: sshd_result.changed == True
+
+
+- name: Get editor alternative
+  stat: path="/etc/alternatives/editor"
+  register: result
+
+- name: Update editor alternative to vim.basic
+  shell: update-alternatives --set 'editor' "$(command -v 'vim.basic')"
+  when: result.stat.lnk_source != "/usr/bin/vim.basic"

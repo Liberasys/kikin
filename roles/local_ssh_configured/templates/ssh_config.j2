@@ -1,0 +1,18 @@
+# {{ ansible_managed }}
+
+{% for hkey, hvalue in hostvars.iteritems() %}
+Host {{ hkey }}
+    Hostname {% if hvalue['ansible_forced_ip'] is defined and hvalue['ansible_forced_ip'] != '' %}{{ hvalue['ansible_forced_ip'] }}
+{% else %}{{ hkey }}
+{% endif %}
+{% if hvalue['ansible_port'] is defined and hvalue['ansible_port'] != '' %}    Port {{ hvalue['ansible_port'] }}{{ newline_char }}{% endif %}
+{% if local_user_private_keyfile_subpath is defined and local_user_private_keyfile_subpath != '' %}    IdentityFile {{ ( local_runpath ~ '/' ~ local_user_private_keyfile_subpath ) | replace('//', '/') }}{{ newline_char }}{% endif %}
+{% if hvalue['ansible_user'] is defined and hvalue['ansible_user'] != '' %}    User {{ hvalue['ansible_user'] }}{{ newline_char }}{% endif %}
+    UserKnownHostsFile {{ ssh_known_host_normal_filepath }}
+    Protocol 2
+    AddKeysToAgent yes
+    IdentitiesOnly yes
+    PasswordAuthentication no
+    HashKnownHosts yes
+#    CheckHostIP no
+{% endfor %}

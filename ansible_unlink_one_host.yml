@@ -1,0 +1,48 @@
+---
+
+- name: Print copyright and warranty
+  hosts: localhost
+  pre_tasks:
+    - debug:
+        msg:
+          - Ansible KIKIN
+          - Copyright (C) 2017  Gautier HUSSON, for HUSSON CONSULTING SAS (Liberasys)
+          - This program comes with ABSOLUTELY NO WARRANTY; for details,
+          - read README.txt file.
+          -     This is free software, and you are welcome to redistribute it
+          -     under certain conditions; read license.txt file for details.
+          -
+      delegate_to: 127.0.0.1
+      run_once: true
+      become: no
+
+- name: Ansible host link configuration removal
+
+  hosts: localhost
+
+  vars_prompt:
+    - name: "host2del"
+      prompt: "What is the hostname of the host you want to unlink ? "
+      private: no
+
+    - name: "verify_host2del"
+      prompt: "Are you sure ? Enter \"yes\" to confirm. "
+
+  pre_tasks:
+    - name: "Check verification"
+      fail: msg="Hostname was not the right one, aborting."
+      when: verify_host2del != "yes"
+
+    - name: Check for single host
+      fail: msg="This playbook must be ran without inventory and without hosts ':' ansible-playbook ./ansible_unlink_one_host.yml --inventory=/dev/null"
+      when: ( play_hosts|length ) != 0
+
+    - name: "Check for localhost play"
+      fail: msg="This playbook must be ran without inventory and without hosts ':' ansible-playbook ./ansible_unlink_one_host.yml --inventory=/dev/null"
+      when: inventory_hostname != "localhost"
+  roles:
+    - { role: hosts_aunlinked }
+  post_tasks:
+    - debug:
+        msg: "WARNING : nothing has been deleted neither deconfigured on destination host - this script does not do decommissionning on the destination host."
+...

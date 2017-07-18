@@ -1,0 +1,25 @@
+---
+user_present_dir: 'user_present/'
+ssh_known_host_normal_filename: 'known_hosts'
+ssh_config_normal_filename: 'config'
+local_ssh_ansible_managed_tag_filename: '000__warning_ssh_config_managed_by_ansible__'
+local_ssh_original_config_new_filename: 'config__modifyme'
+local_ssh_original_known_hosts_new_filename: 'known_hosts__modifyme'
+local_ssh_config_dir: "{{ ( local_user_home_path ~ '/.ssh/' ) | replace('//', '/') }}"
+ssh_known_host_concat_dir: "{{ (local_ssh_config_dir ~ '/' ~ 'known_hosts.d/')  | replace('//', '/') }}"
+ssh_config_concat_dir: "{{ (local_ssh_config_dir ~ '/' ~ 'config.d/')  | replace('//', '/') }}"
+ssh_known_host_normal_filepath: "{{ ( local_ssh_config_dir ~ '/' ~ ssh_known_host_normal_filename ) | replace('//', '/') }}"
+ssh_config_normal_filepath: "{{ ( local_ssh_config_dir ~ '/' ~ ssh_config_normal_filename ) | replace('//', '/') }}"
+local_ssh_known_host_filepath: "{{ ( ssh_known_host_concat_dir ~ '/' ~ ansible_instance_name ) | replace('//', '/') }}"
+local_ssh_config_filepath: "{{ ( ssh_config_concat_dir ~ '/' ~ ansible_instance_name ) | replace('//', '/') }}"
+local_ssh_ansible_managed_tag_filepath: "{{ ( local_ssh_config_dir ~ '/' ~ local_ssh_ansible_managed_tag_filename ) | replace('//', '/') }}"
+local_ssh_original_known_hosts_new_filepath: "{{ ( local_ssh_config_dir ~ '/' ~ local_ssh_original_known_hosts_new_filename ) | replace('//', '/') }}"
+local_ssh_original_config_new_filepath: "{{ ( local_ssh_config_dir ~ '/' ~ local_ssh_original_config_new_filename ) | replace('//', '/') }}"
+
+host_vars_directory: 'host_vars/'
+hostvars_sshkey_attributes:
+  - sshdpubkey_dsa
+  - sshdpubkey_ecdsa
+  - sshdpubkey_ed25519
+  - sshdpubkey_rsa
+...

@@ -1,0 +1,230 @@
+---
+# TODO : add the possibility to force SSH key to connect a host
+#        for this, add these variables in host_vars :
+#          host_link_forced_ssh_key_private_filepath=""
+#          host_link_forced_ssh_key_public_filepath=""
+#        and add a condition in the ssh_config template
+
+- name: "Create user present directory database if not present"
+  file: path="{{ user_present_dir }}" state=directory
+  delegate_to: 127.0.0.1
+  run_once: true
+  become: no
+
+- include_vars:
+    depth: 1
+    dir: "../../../{{ user_present_dir }}"
+    files_matching: ^.*.yml$
+    name: users_present_db
+
+- set_fact:
+    newline_char="\n"
+    local_username="{{ lookup('env', 'USER') }}"
+    local_user_home_path="{{ lookup('env', 'HOME') }}"
+    local_runpath="{{ lookup('env', 'PWD') }}"
+    local_user_private_keyfile_subpath="{% for ukey, uvalue in users_present_db.iteritems() -%}
+                                          {% if uvalue['userlogin'] == lookup('env', 'USER') -%}
+                                            {% if uvalue['ssh_key_private_filepath'] is defined and uvalue['ssh_key_private_filepath'] != '' -%}{{ uvalue['ssh_key_private_filepath'] }}{% endif -%}
+                                          {% endif -%}
+                                        {% endfor -%}"
+    user_present_logins="[{% set comma = joiner(',') %}{% for key, value in users_present_db.iteritems() %}{{ comma() }}\'{{ value.userlogin }}\'{% endfor %}]"
+    all_known_hosts_ssh_public_keys="[
+                                       {% set comma = joiner(',') %}
+                                       {% for hkey, hvalue in hostvars.iteritems() %}
+                                         {% for keytype in hostvars_sshkey_attributes %}
+                                           {% if hvalue[keytype] is defined and hvalue[keytype] != '' %}
+                                             {{ comma() }} \'{{hvalue[keytype]}}\'
+                                           {% endif %}
+                                         {% endfor %}
+                                       {% endfor %}]"
+  delegate_to: 127.0.0.1
+  run_once: true
+  become: no
+
+#- debug:
+#    msg: "ansible_user_id : {{ local_username }} "
+#  delegate_to: 127.0.0.1
+
+- name: "Assert that the current Ansible instance has a name"
+  assert:
+    that: ansible_instance_name is defined and ansible_instance_name != ''
+    msg: "PROBLEM : this ansible instance has no name. Please run : ansible-playbook ./ansible_name_instance.yml --inventory=/dev/null"
+
+- name: "Assert that present local username is in users present database"
+  assert:
+     that: local_username in user_present_logins
+     msg: "PROBLEM : your username {{local_username}} is not in user present database ! Please add it before."
+  delegate_to: 127.0.0.1
+  run_once: true
+  become: no
+  when: ( hostvars['ugs_synchronisation'] is defined and hostvars['ugs_synchronisation'] == 'yes' ) or ( hostvars['ansible_user'] is defined and hostvars['ansible_user'] != '' )
+
+- name: "Make sure that local ssh configuration directories exists with rights permissions."
+  file:
+    path: "{{ item }}"
+    state: directory
+    owner: '{{ local_username }}'
+    mode: 0700
+    recurse: no
+  delegate_to: 127.0.0.1
+  run_once: true
+  become: no
+  with_items:
+    - "{{ local_ssh_config_dir }}"
+    - "{{ ssh_known_host_concat_dir }}"
+    - "{{ ssh_config_concat_dir }}"
+
+- name: "Generate current Ansible instance ssh known host file"
+  template:
+    src: known_hosts.j2
+    dest: "{{ local_ssh_known_host_filepath }}"
+    force: yes
+    owner: '{{ local_username }}'
+    mode: 0600
+  delegate_to: 127.0.0.1
+  run_once: true
+  become: no
+
+- name: "Generate current Ansible instance ssh_config file"
+  template:
+    src: ssh_config.j2
+    dest: "{{ local_ssh_config_filepath }}"
+    force: yes
+    owner: '{{ local_username }}'
+    mode: 0600
+  delegate_to: 127.0.0.1
+  run_once: true
+  become: no
+
+- stat:
+    path: "{{ ssh_known_host_normal_filepath }}"
+  register: stat_main_ssh_known_hosts
+  delegate_to: 127.0.0.1
+  run_once: true
+  become: no
+
+- stat:
+    path: "{{ ssh_config_normal_filepath }}"
+  register: stat_main_ssh_config
+  delegate_to: 127.0.0.1
+  run_once: true
+  become: no
+
+- stat:
+    path: "{{ local_ssh_ansible_managed_tag_filepath }}"
+  register: stat_local_ssh_ansible_managed_tag_file
+  delegate_to: 127.0.0.1
+  run_once: true
+  become: no
+
+- stat:
+    path: "{{ local_ssh_original_known_hosts_new_filepath }}"
+  register: stat_local_ssh_original_known_hosts
+  delegate_to: 127.0.0.1
+  run_once: true
+  become: no
+
+- stat:
+    path: "{{ local_ssh_original_config_new_filepath }}"
+  register: stat_local_ssh_original_config
+  delegate_to: 127.0.0.1
+  run_once: true
+  become: no
+
+- name: "Move original ssh known_hosts file to {{ local_ssh_original_known_hosts_new_filename }} "
+  command: mv {{ ssh_known_host_normal_filepath }} {{ local_ssh_original_known_hosts_new_filepath }}
+  delegate_to: 127.0.0.1
+  run_once: true
+  become: no
+  when:
+    - not ( stat_local_ssh_ansible_managed_tag_file.stat.isreg is defined and stat_local_ssh_ansible_managed_tag_file.stat.isreg == True )
+    - stat_main_ssh_known_hosts.stat.isreg is defined and stat_main_ssh_known_hosts.stat.isreg == True
+
+- name: "Move original ssh config file to {{ local_ssh_original_config_new_filename }} "
+  command: mv {{ ssh_config_normal_filepath }} {{ local_ssh_original_config_new_filepath }}
+  delegate_to: 127.0.0.1
+  run_once: true
+  become: no
+  when:
+    - not ( stat_local_ssh_ansible_managed_tag_file.stat.isreg is defined and stat_local_ssh_ansible_managed_tag_file.stat.isreg == True )
+    - stat_main_ssh_config.stat.isreg is defined and stat_main_ssh_config.stat.isreg == True
+
+- name: "Make sure that manually modifiable ssh known_hosts file is present"
+  file:
+    path: "{{ item }}"
+    state: touch
+    owner: '{{ local_username }}'
+    mode: 0600
+    recurse: no
+  register: touch_log
+  delegate_to: 127.0.0.1
+  run_once: true
+  become: no
+  with_items:
+    - "{{ local_ssh_original_known_hosts_new_filepath }}"
+    - "{{ local_ssh_original_config_new_filepath }}"
+    - "{{ ssh_known_host_normal_filepath }}"
+    - "{{ ssh_config_normal_filepath }}"
+    - "{{ local_ssh_ansible_managed_tag_filepath }}"
+  changed_when: touch_log.diff.before.state != "file"
+
+
+- name: "Find ansible managed ssh known_hosts files"
+  find:
+    paths: "{{ ssh_known_host_concat_dir }}"
+    patterns: "*"
+    recurse: "no"
+    file_type: "file"
+  register: ansible_managed_ssh_known_hosts_files
+  delegate_to: 127.0.0.1
+  run_once: true
+  become: no
+
+- name: "Find ansible managed ssh config files"
+  find:
+    paths: "{{ ssh_config_concat_dir }}"
+    patterns: "*"
+    recurse: "no"
+    file_type: "file"
+  register: ansible_managed_ssh_config_files
+  delegate_to: 127.0.0.1
+  run_once: true
+  become: no
+
+- name: "Build ssh known_hosts file : add original file content"
+  shell: "{{ item }}"
+  delegate_to: 127.0.0.1
+  run_once: true
+  become: no
+  with_items:
+    - echo "# Ansible builds this configuration file, do not modify by hand !" > {{ ssh_known_host_normal_filepath }}
+    - echo "" >> {{ ssh_known_host_normal_filepath }}
+    - cat {{ local_ssh_original_known_hosts_new_filepath }} >> {{ ssh_known_host_normal_filepath }}
+    - echo "" >> {{ ssh_known_host_normal_filepath }}
+
+- name: "Build ssh known_hosts file : add ansible managed files contents"
+  shell: cat {{ item.path }} >> {{ ssh_known_host_normal_filepath }}
+  delegate_to: 127.0.0.1
+  run_once: true
+  become: no
+  with_items: "{{ ansible_managed_ssh_known_hosts_files.files }}"
+
+- name: "Build ssh config file : add original file content"
+  shell: "{{ item }}"
+  delegate_to: 127.0.0.1
+  run_once: true
+  become: no
+  with_items:
+    - echo "# Ansible builds this configuration file, do not modify by hand !" > {{ ssh_config_normal_filepath }}
+    - echo "" >> {{ ssh_config_normal_filepath }}
+    - cat {{ local_ssh_original_config_new_filepath }} >> {{ ssh_config_normal_filepath }}
+    - echo "" >> {{ ssh_config_normal_filepath }}
+
+- name: "Build ssh known_hosts file : add ansible managed files contents"
+  shell: cat {{ item.path }} >> {{ ssh_config_normal_filepath }}
+  delegate_to: 127.0.0.1
+  run_once: true
+  become: no
+  with_items: "{{ ansible_managed_ssh_config_files.files }}"
+
+...

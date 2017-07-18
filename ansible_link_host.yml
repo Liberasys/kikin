@@ -1,0 +1,30 @@
+---
+- name: Ansible host link configuration
+  hosts: "{{ansible_host}}"
+
+  pre_tasks:
+    - name: "Check for single host"
+      fail: msg="Single host check failed. Please run this playbook with only one host, the new one !"
+      when: ( play_hosts | length ) != 1
+
+  roles:
+    - { role: host_alinked }
+    - { role: users_configured, when: ugs_synchronisation == 'yes' }
+
+  post_tasks:
+    - name: "Delete temporary ssh config file"
+      file:
+        path: "{{tmp_file_sshconfig}}"
+        state: absent
+      run_once: true
+      become: no
+      delegate_to: 127.0.0.1
+
+    - name: "Delete temporary Ansible inventory file"
+      file:
+        path: "{{tmp_file_ainventory}}"
+        state: absent
+      run_once: true
+      become: no
+      delegate_to: 127.0.0.1
+...

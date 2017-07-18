@@ -1,0 +1,212 @@
+---
+
+# TODO : integrate sudo level (mandatory for the moment) and groups/hosts access configuration
+
+# Set facts about users and groups for this host
+- getent:
+    database: passwd
+- getent:
+    database: group
+# Facts available are getent_passwd and getent_group
+
+- name: "Create user present directory database if not present"
+  file: path="{{ user_present_dir }}" state=directory
+  delegate_to: 127.0.0.1
+  run_once: true
+  become: no
+
+- include_vars:
+    depth: 1
+    dir: "../../../{{ user_present_dir }}"
+    files_matching: ^.*.yml$
+    name: users_present_db
+
+- name: "Create user absent directory database if not present"
+  file: path="{{ user_absent_dir }}" state=directory
+  delegate_to: 127.0.0.1
+  run_once: true
+  become: no
+
+- include_vars:
+    depth: 1
+    dir: "../../../{{ user_absent_dir }}"
+    files_matching: ^.*.yml$
+    name: users_absent_db
+
+#- debug:
+#    msg: "{{logins_and_uids_register.stdout_lines}}"
+
+- set_fact:
+    user_present_logins="[{% set comma = joiner(',') %}{% for key, value in users_present_db.iteritems() %}{{ comma() }}\'{{ value.userlogin }}\'{% endfor %}]"
+    user_present_groups="[{% set comma = joiner(',') %}{% for key, value in users_present_db.iteritems() %}{{ comma() }}\'{{ value.group }}\'{% endfor %}]"
+    user_absent_logins="[{% set comma = joiner(',') %}{% for key, value in users_absent_db.iteritems() %}{{ comma() }}\'{{ value.userlogin }}\'{% endfor %}]"
+  delegate_to: 127.0.0.1
+  run_once: true
+  become: no
+
+- name: "Assert that absent users are not in present users list"
+  assert:
+    that: "not '{{item.value.userlogin}}' in user_present_logins"
+    msg: "Problem : login '{{item.value.userlogin}}' is in present AND absent users databases. Look for {{user_absent_dir}}/{{item.key}}.yml file."
+  delegate_to: 127.0.0.1
+  run_once: true
+  become: no
+  with_dict: "{{ users_absent_db | default({}) }}"
+
+
+#- debug:
+#    var: getent_passwd
+#
+#- debug:
+#    msg: "{{ item.value[1] }}"
+#  with_dict: "{{ getent_passwd }}"
+#- debug:
+#    msg: "{{ getent_passwd['ghusson'][1] }}"
+
+- name: "Assert that present users (if exists) have the right uids"
+  assert:
+     that: getent_passwd[item.value.userlogin][1] == '{{item.value.uid}}'
+     msg: "User already exists and has not the right UID. PROBLEM with user {{item.value.userlogin}} : passwd uid = {{getent_passwd[item.value.userlogin][1]}}, ansible db uid = {{item.value.uid}}"
+  with_dict: "{{ users_present_db | default({}) }}"
+  when:
+    - getent_passwd[item.value.userlogin] is defined
+    - hostvars[ansible_host]['ugs_synchronisation'] is defined and hostvars[ansible_host]['ugs_synchronisation'] == 'yes'
+
+- name: "Assert that present groups (if exists) have the right uids"
+  assert:
+     that: getent_group[item.value.userlogin][1] == '{{item.value.gid}}'
+     msg: "User already exists and has not the right GID. PROBLEM with user {{item.value.userlogin}} : passwd gid = {{getent_group[item.value.userlogin][1]}}, ansible db gid = {{item.value.gid}}"
+  with_dict: "{{ users_present_db | default({}) }}"
+  when:
+    - getent_group[item.value.userlogin] is defined
+    - hostvars[ansible_host]['ugs_synchronisation'] is defined and hostvars[ansible_host]['ugs_synchronisation'] == 'yes'
+
+- name: "Verify that present groups are present in host configuration"
+  group:
+    name: "{{item.value.userlogin}}"
+    gid: "{{item.value.gid}}"
+    state: present
+    system: no
+  with_dict: "{{ users_present_db | default({}) }}"
+  when: hostvars[ansible_host]['ugs_synchronisation'] is defined and hostvars[ansible_host]['ugs_synchronisation'] == 'yes'
+
+- name: "Make that present users are present in host configuration"
+  user:
+    name: "{{item.value.userlogin}}"
+    comment: "{{item.value.usernamesurname}} - {{item.value.company}}{% if item.value.sudoer == 'yes' %} (sudoer){% endif %}"
+    uid: "{{item.value.uid}}"
+    group: "{{item.value.group}}"
+    createhome: yes
+    shell: "/bin/bash"
+    expires: no
+    system: no
+    state: present
+  with_dict: "{{ users_present_db | default({}) }}"
+  when: hostvars[ansible_host]['ugs_synchronisation'] is defined and hostvars[ansible_host]['ugs_synchronisation'] == 'yes'
+
+- name: "Make that absent users are absent in host configuration"
+  user:
+    name: "{{item.value.userlogin}}"
+    uid: "{{item.value.uid}}"
+    state: absent
+  with_dict: "{{ users_absent_db | default({}) }}"
+  when: hostvars[ansible_host]['ugs_synchronisation'] is defined and hostvars[ansible_host]['ugs_synchronisation'] == 'yes'
+
+- name: "Make that absent groups are absent in host configuration"
+  group:
+    name: "{{item.value.userlogin}}"
+    gid: "{{item.value.gid}}"
+    state: absent
+  with_dict: "{{ users_absent_db | default({}) }}"
+  when:
+    - not {{item.value.gid}} in user_present_groups
+    - hostvars[ansible_host]['ugs_synchronisation'] is defined and hostvars[ansible_host]['ugs_synchronisation'] == 'yes'
+
+- name: "Compute date-time tag"
+  command: date "+%Y%m%d-%H%M%S"
+  register: datetime_tag
+  changed_when: False
+
+- name: "Compress home directory of absent user and remode home directory"
+  archive:
+    path: "/home/{{item.value.userlogin}}"
+    dest: "/home/{{datetime_tag.stdout}}_removed_user_{{item.value.userlogin}}_homedir_backup.tgz"
+    format: gz
+    owner: root
+    group: root
+    mode: 600
+    remove: yes
+  with_dict: "{{ users_absent_db | default({}) }}"
+  when: hostvars[ansible_host]['ugs_synchronisation'] is defined and hostvars[ansible_host]['ugs_synchronisation'] == 'yes'
+  failed_when: False
+# could do better with a dedicated bask script (here the difficulty is to test dir existence while looping over users)
+# seems that dot dirs are not removed by ansible ???
+
+- name: "Set SSH authorized key"
+  authorized_key:
+    user: "{{item.value.userlogin}}"
+    state: present
+    exclusive: yes
+    key: "{{ lookup('file', '{{item.value.ssh_key_public_filepath}}') }}"
+  with_dict: "{{ users_present_db | default({}) }}"
+  when:
+    - item.value.ssh_key_public_filepath is defined and item.value.ssh_key_public_filepath != ""
+    - hostvars[ansible_host]['ugs_synchronisation'] is defined and hostvars[ansible_host]['ugs_synchronisation'] == 'yes'
+
+- name: "Install sudo (Debian-like)"
+  apt: pkg=sudo state=installed update_cache=yes cache_valid_time={{ sudoers_apt_cache_valid_time }}
+  when:
+    - ansible_os_family == "Debian"
+    - hostvars[ansible_host]['ugs_synchronisation'] is defined and hostvars[ansible_host]['ugs_synchronisation'] == 'yes'
+
+- name: "Install sudo (RedHat-like)"
+  yum: name=sudo state=present
+  when:
+    - ansible_os_family == "RedHat"
+    - hostvars[ansible_host]['ugs_synchronisation'] is defined and hostvars[ansible_host]['ugs_synchronisation'] == 'yes'
+
+- name: "Install sudo (SUSE-like)"
+  zypper: name=sudo state=present
+  when:
+    - ansible_os_family == "SUSE"
+    - hostvars[ansible_host]['ugs_synchronisation'] is defined and hostvars[ansible_host]['ugs_synchronisation'] == 'yes'
+
+- name: "Create sudoers.d directory"
+  file:
+    path: /etc/sudoers.d
+    owner: root
+    group: root
+    mode: 0755
+    state: directory
+  when: hostvars[ansible_host]['ugs_synchronisation'] is defined and hostvars[ansible_host]['ugs_synchronisation'] == 'yes'
+
+- name: "Set includedir in sudoers main configuration file"
+  lineinfile:
+    dest: /etc/sudoers
+    line: "#includedir /etc/sudoers.d"
+    state: present
+    validate: "/usr/sbin/visudo -cf %s"
+  when: hostvars[ansible_host]['ugs_synchronisation'] is defined and hostvars[ansible_host]['ugs_synchronisation'] == 'yes'
+
+- name: "Create sudoers configuration files"
+  template:
+    src: sudoers.d.j2
+    dest: "/etc/sudoers.d/{{ item.value.userlogin }}"
+    mode: 0440
+    owner: root
+    group: root
+    validate: "/usr/sbin/visudo -cf %s"
+  with_dict: "{{ users_present_db | default({}) }}"
+  when:
+    - item.value.sudoer is defined and item.value.sudoer == "yes"
+    - hostvars[ansible_host]['ugs_synchronisation'] is defined and hostvars[ansible_host]['ugs_synchronisation'] == 'yes'
+
+- name: "Remove sudoers configuration files"
+  file:
+    path: "/etc/sudoers.d/{{ item.value.userlogin }}"
+    state: absent
+  with_dict: "{{ users_absent_db | default({}) }}"
+  when:
+    - item.value.sudoer is defined and item.value.sudoer == "no"
+    - hostvars[ansible_host]['ugs_synchronisation'] is defined and hostvars[ansible_host]['ugs_synchronisation'] == 'yes'
+...

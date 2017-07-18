@@ -1,0 +1,40 @@
+---
+
+- name: Print copyright and warranty
+  hosts: localhost
+  pre_tasks:
+    - debug:
+        msg:
+          - Ansible KIKIN
+          - Copyright (C) 2017  Gautier HUSSON, for HUSSON CONSULTING SAS (Liberasys)
+          - This program comes with ABSOLUTELY NO WARRANTY; for details,
+          - read README.txt file.
+          -     This is free software, and you are welcome to redistribute it
+          -     under certain conditions; read license.txt file for details.
+          -
+      delegate_to: 127.0.0.1
+      run_once: true
+      become: no
+
+- name: Current Ansible instance name configuration
+  hosts: localhost
+  vars:
+    - write_instance_name_files: [ "roles/local_ssh_configured/vars/main.yml" ]
+  vars_prompt:
+    - name: "ansible_instance_name"
+      prompt: "Please give a name to this Ansible instance: "
+      private: no
+  pre_tasks:
+  - name: "Store Ansible instance name"
+    lineinfile:
+      path: "{{ item }}"
+      regexp: 'ansible_instance_name:'
+      line: "ansible_instance_name: {{ ansible_instance_name }}"
+      backup: no
+      create: yes
+      state: present
+    delegate_to: 127.0.0.1
+    run_once: true
+    become: no
+    with_items: "{{ write_instance_name_files }}"
+...
