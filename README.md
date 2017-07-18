@@ -82,6 +82,7 @@ SSH known_hosts file in your profile (your profile, as current user on a compute
 
 USING KIKIN
 ===========
+0. download KIKIN : http://github.com/Liberasys/kikin/archive/master.zip or use ```git clone git://github.com/Liberasys/kikin.git```
 1. Give a name to your current Ansible instance : ```ansible-playbook ./ansible_name_instance.yml --inventory=/dev/null```
 2. Add a user : ```./ansible_add_user.bash```
 3. Add a link to a new host (you will be prompted) : ``` ./ansible_link_host.bash ```
