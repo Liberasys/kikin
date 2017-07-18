@@ -94,7 +94,7 @@ USING KIKIN
     ssh-add user_present/<user name _ user surname>/<file without .pub>
     # enter your key protection passphrase
     # press Ctrl + D
-    ```
+```
 - try to connect to a server you have linked : ```ssh <linked hostname>```
 - have a look at file : roles/staging/tasks/main.yml
 - run : ```ansible-playbook demo.yml --inventory=./inventory/all.inventory```
