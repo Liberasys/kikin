@@ -116,10 +116,6 @@
   become: no
   when: ugs_synchronisation is defined and ugs_synchronisation != ''
 
-# not using -H until ssh-keyscan bug is resolved, see :
-# https://bugs.launchpad.net/ubuntu/+source/openssh/+bug/1670745
-#  https://github.com/ansible/ansible-modules-extras/issues/2651
-#  shell: ssh-keyscan -t dsa -p {{ ansible_port }} -H -T 5 "{% if ansible_forced_ip is defined and ansible_forced_ip != '' %}{{ansible_forced_ip}}{% else %}{{ansible_host}}{% endif %}" 2>/dev/null
 - name: "Scan host SSH server public key : dsa"
   shell: ssh-keyscan -t dsa -H -p {{ ansible_port }} -T 5 "{% if ansible_forced_ip is defined and ansible_forced_ip != '' %}{{ansible_forced_ip}}{% else %}{{ansible_host}}{% endif %}" 2>/dev/null
   register: ssh_keyscan
