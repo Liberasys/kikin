@@ -117,7 +117,7 @@
   when: ugs_synchronisation is defined and ugs_synchronisation != ''
 
 - name: "Scan host SSH server public key : dsa"
-  shell: ssh-keyscan -t dsa -H -p {{ ansible_port }} -T 5 "{% if ansible_forced_ip is defined and ansible_forced_ip != '' %}{{ansible_forced_ip}}{% else %}{{ansible_host}}{% endif %}" 2>/dev/null
+  shell: ssh-keyscan -t dsa -p {{ ansible_port }} -T 5 "{% if ansible_forced_ip is defined and ansible_forced_ip != '' %}{{ansible_forced_ip}}{% else %}{{ansible_host}}{% endif %}" 2>/dev/null
   register: ssh_keyscan
   delegate_to: 127.0.0.1
   run_once: true
@@ -126,6 +126,10 @@
 
 - debug:
     msg: "Key : {{ ssh_keyscan.stdout_lines[0] }}"
+  when:
+    - ansible_host != "localhost"
+    - ssh_keyscan.stdout_lines[0] is defined and ssh_keyscan.stdout_lines[0] != ''
+
 
 - name: "Store host SSH server public key : dsa"
   lineinfile:
@@ -143,7 +147,7 @@
     - ssh_keyscan.stdout_lines[0] is defined and ssh_keyscan.stdout_lines[0] != ''
 
 - name: "Scan host SSH server public key : ecdsa"
-  shell: ssh-keyscan -t ecdsa -H -p {{ ansible_port }} -T 5 "{% if ansible_forced_ip is defined and ansible_forced_ip != '' %}{{ansible_forced_ip}}{% else %}{{ansible_host}}{% endif %}" 2>/dev/null
+  shell: ssh-keyscan -t ecdsa -p {{ ansible_port }} -T 5 "{% if ansible_forced_ip is defined and ansible_forced_ip != '' %}{{ansible_forced_ip}}{% else %}{{ansible_host}}{% endif %}" 2>/dev/null
   register: ssh_keyscan
   delegate_to: 127.0.0.1
   run_once: true
@@ -166,7 +170,7 @@
     - ssh_keyscan.stdout_lines[0] is defined and ssh_keyscan.stdout_lines[0] != ''
 
 - name: "Scan host SSH server public key : ed25519"
-  shell: ssh-keyscan -t ed25519 -H -p {{ ansible_port }} -T 5 "{% if ansible_forced_ip is defined and ansible_forced_ip != '' %}{{ansible_forced_ip}}{% else %}{{ansible_host}}{% endif %}" 2>/dev/null
+  shell: ssh-keyscan -t ed25519 -p {{ ansible_port }} -T 5 "{% if ansible_forced_ip is defined and ansible_forced_ip != '' %}{{ansible_forced_ip}}{% else %}{{ansible_host}}{% endif %}" 2>/dev/null
   register: ssh_keyscan
   delegate_to: 127.0.0.1
   become: no
@@ -188,7 +192,7 @@
     - ssh_keyscan.stdout_lines[0] is defined and ssh_keyscan.stdout_lines[0] != ''
 
 - name: "Scan host SSH server public key : rsa"
-  shell: ssh-keyscan -t rsa -H -p {{ ansible_port }} -T 5 "{% if ansible_forced_ip is defined and ansible_forced_ip != '' %}{{ansible_forced_ip}}{% else %}{{ansible_host}}{% endif %}" 2>/dev/null
+  shell: ssh-keyscan -t rsa -p {{ ansible_port }} -T 5 "{% if ansible_forced_ip is defined and ansible_forced_ip != '' %}{{ansible_forced_ip}}{% else %}{{ansible_host}}{% endif %}" 2>/dev/null
   register: ssh_keyscan
   delegate_to: 127.0.0.1
   run_once: true
@@ -211,7 +215,7 @@
     - ssh_keyscan.stdout_lines[0] is defined and ssh_keyscan.stdout_lines[0] != ''
 
 - debug:
-    msg: "ssh-keyscan -t rsa -H -p {{ ansible_port }} -T 5 {% if ansible_forced_ip is defined and ansible_forced_ip != '' %}{{ansible_forced_ip}}{% else %}{{ansible_host}}{% endif %} 2>/dev/null"
+    msg: "ssh-keyscan -t rsa -p {{ ansible_port }} -T 5 {% if ansible_forced_ip is defined and ansible_forced_ip != '' %}{{ansible_forced_ip}}{% else %}{{ansible_host}}{% endif %} 2>/dev/null"
 
 - name: "Store host in the all inventory file"
   lineinfile:

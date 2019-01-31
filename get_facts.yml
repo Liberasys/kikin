@@ -1,0 +1,6 @@
+---
+- hosts: all
+  name: "Get facts"
+  pre_tasks:
+    - debug: var=ansible_facts
+

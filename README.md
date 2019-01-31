@@ -98,7 +98,7 @@ USING KIKIN
 ```
 - try to connect to a server you have linked : ```ssh <linked hostname>```
 - have a look at file : roles/staging/tasks/main.yml
-- run : ```ansible-playbook demo.yml --inventory=./inventory/all.inventory```
+- run : ```ansible-playbook --become demo.yml --inventory=./inventory/all.inventory```
 
 **you have now staged all your servers with one command line !!!**
 

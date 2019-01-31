@@ -1,5 +1,6 @@
 ---
 staging_packages:
+  - aptitude
   - vim
   - sysstat
   - atop
@@ -11,6 +12,7 @@ staging_packages:
   - bootlogd
   - apt-dater-host
   - rsync
+  - qemu-guest-agent
 
 apply_template_search_paths:
   - '{{ ansible_distribution | lower }}-{{ ansible_distribution_version | lower }}'

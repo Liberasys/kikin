@@ -1,0 +1,12 @@
+ansible-playbook --inventory=./inventory/all.inventory ./generate_local_ssh_config.yml
+ansible-playbook --limit='all' --become --inventory=./inventory/all.inventory ./configure_all.yml
+ansible-playbook --limit='all:!pve' --become --inventory=./inventory/liberasys.inventory ./debian_upgrade.yml
+
+# rebuild local user SSH config
+ansible-playbook ./generate_local_ssh_config.yml --inventory=./inventory/all.inventory
+
+# staging
+ansible-playbook --limit='turn.liberasys.com' --become --inventory=./inventory/liberasys.inventory ./demo.yml
+
+# run a shell command on several hosts
+ansible --limit='all' --become --inventory=./inventory/all.inventory -m shell -a "find /proc | grep arp | grep prox | xargs cat" all

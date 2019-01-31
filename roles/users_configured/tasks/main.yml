@@ -72,18 +72,18 @@
     - getent_passwd[item.value.userlogin] is defined
     - hostvars[ansible_host]['ugs_synchronisation'] is defined and hostvars[ansible_host]['ugs_synchronisation'] == 'yes'
 
-- name: "Assert that present groups (if exists) have the right uids"
+- name: "Assert that present groups (if exists) have the right gids"
   assert:
-     that: getent_group[item.value.userlogin][1] == '{{item.value.gid}}'
-     msg: "User already exists and has not the right GID. PROBLEM with user {{item.value.userlogin}} : passwd gid = {{getent_group[item.value.userlogin][1]}}, ansible db gid = {{item.value.gid}}"
+     that: getent_group[item.value.group][1] == '{{item.value.gid}}'
+     msg: "User already exists and has not the right GID. PROBLEM with user {{item.value.userlogin}} : passwd gid = {{getent_group[item.value.group][1]}}, ansible db gid = {{item.value.gid}}"
   with_dict: "{{ users_present_db | default({}) }}"
   when:
-    - getent_group[item.value.userlogin] is defined
+    - getent_group[item.value.group] is defined
     - hostvars[ansible_host]['ugs_synchronisation'] is defined and hostvars[ansible_host]['ugs_synchronisation'] == 'yes'
 
 - name: "Verify that present groups are present in host configuration"
   group:
-    name: "{{item.value.userlogin}}"
+    name: "{{item.value.group}}"
     gid: "{{item.value.gid}}"
     state: present
     system: no
@@ -98,7 +98,8 @@
     group: "{{item.value.group}}"
     createhome: yes
     shell: "/bin/bash"
-    expires: no
+    # expires: no triggers a bug while setting 0 to expire day and result in expired user !
+    #expires: no
     system: no
     state: present
   with_dict: "{{ users_present_db | default({}) }}"
@@ -127,7 +128,7 @@
   register: datetime_tag
   changed_when: False
 
-- name: "Compress home directory of absent user and remode home directory"
+- name: "Compress home directory of absent user and remote home directory"
   archive:
     path: "/home/{{item.value.userlogin}}"
     dest: "/home/{{datetime_tag.stdout}}_removed_user_{{item.value.userlogin}}_homedir_backup.tgz"
@@ -154,7 +155,7 @@
     - hostvars[ansible_host]['ugs_synchronisation'] is defined and hostvars[ansible_host]['ugs_synchronisation'] == 'yes'
 
 - name: "Install sudo (Debian-like)"
-  apt: pkg=sudo state=installed update_cache=yes cache_valid_time={{ sudoers_apt_cache_valid_time }}
+  apt: pkg=sudo state=present update_cache=yes cache_valid_time={{ sudoers_apt_cache_valid_time }}
   when:
     - ansible_os_family == "Debian"
     - hostvars[ansible_host]['ugs_synchronisation'] is defined and hostvars[ansible_host]['ugs_synchronisation'] == 'yes'

@@ -97,16 +97,16 @@ USERGID=${USERGID:-$USER_NEXT_UID}
 unset SSHKEYTYPE
 while [[ $SSHKEYTYPE != 'dsa' ]] && [[ $SSHKEYTYPE != 'ecdsa' ]] && [[ $SSHKEYTYPE != 'ed25519' ]] && [[ $SSHKEYTYPE != 'rsa' ]]
 do
-  read -p "Enter SSH key type (dns/ecdsa/ed25519/rsa) [ecdsa]: " SSHKEYTYPE
-  SSHKEYTYPE=${SSHKEYTYPE:-ecdsa}
+  read -p "Enter SSH key type (dns/ecdsa/ed25519/rsa) [rsa]: " SSHKEYTYPE
+  SSHKEYTYPE=${SSHKEYTYPE:-rsa}
 done
 
 # ask for SSH key bits
 unset SSHKEYBITS
 while [[ $SSHKEYBITS != '1024' ]] && [[ $SSHKEYBITS != '2048' ]] && [[ $SSHKEYBITS != '4096' ]] && [[ $SSHKEYBITS != '256' ]] && [[ $SSHKEYBITS != '384' ]] && [[ $SSHKEYBITS != '521' ]]
 do
-  read -p "Enter SSH key bits (1024/2048/4096/256/384/521) [521]: " SSHKEYBITS
-  SSHKEYBITS=${SSHKEYBITS:-521}
+  read -p "Enter SSH key bits (1024/2048/4096/256/384/521) [4096]: " SSHKEYBITS
+  SSHKEYBITS=${SSHKEYBITS:-4096}
 done
 
 

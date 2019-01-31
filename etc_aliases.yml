@@ -1,0 +1,9 @@
+---
+- hosts: all
+  name: "Get facts"
+  pre_tasks:
+  - command: 'cat /etc/aliases'
+    changed_when: false
+    register: command_reg
+  - debug: var=command_reg.stdout_lines
+

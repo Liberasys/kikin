@@ -1,0 +1,5 @@
+---
+- hosts: all
+  name: "Get facts"
+  pre_tasks:
+    - debug: msg="{{ansible_facts.hostname}} {{ansible_facts.distribution}} {{ansible_facts.distribution_version}}"
