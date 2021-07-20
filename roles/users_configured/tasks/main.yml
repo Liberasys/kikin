@@ -33,13 +33,13 @@
     files_matching: ^.*.yml$
     name: users_absent_db
 
-#- debug:
-#    msg: "{{logins_and_uids_register.stdout_lines}}"
+- debug:
+    msg: "{{users_present_db}}"
 
 - set_fact:
-    user_present_logins="[{% set comma = joiner(',') %}{% for key, value in users_present_db.iteritems() %}{{ comma() }}\'{{ value.userlogin }}\'{% endfor %}]"
-    user_present_groups="[{% set comma = joiner(',') %}{% for key, value in users_present_db.iteritems() %}{{ comma() }}\'{{ value.group }}\'{% endfor %}]"
-    user_absent_logins="[{% set comma = joiner(',') %}{% for key, value in users_absent_db.iteritems() %}{{ comma() }}\'{{ value.userlogin }}\'{% endfor %}]"
+    user_present_logins="[{% set comma = joiner(',') %}{% for key, value in users_present_db.items() %}{{ comma() }}\'{{ value.userlogin }}\'{% endfor %}]"
+    user_present_groups="[{% set comma = joiner(',') %}{% for key, value in users_present_db.items() %}{{ comma() }}\'{{ value.group }}\'{% endfor %}]"
+    user_absent_logins="[{% set comma = joiner(',') %}{% for key, value in users_absent_db.items() %}{{ comma() }}\'{{ value.userlogin }}\'{% endfor %}]"
   delegate_to: 127.0.0.1
   run_once: true
   become: no

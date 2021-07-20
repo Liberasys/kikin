@@ -1,0 +1,51 @@
+---
+# Only Debian OS family is managed for the moment
+- assert: { that: "ansible_os_family == 'Debian'" }
+- assert: { that: "ansible_pkg_mgr == 'apt'" }
+
+- name: "Purge zabbix-agent package"
+  action: apt name=zabbix-agent purge=yes state=absent
+
+- name: "Purge zabbix-release package"
+  action: apt name=zabbix-release purge=yes state=absent
+
+- name: "List configuration files and directories that were not purged in /etc/zabbix/"
+  command: 'find /etc/zabbix/ -name "*zabbix_agent*" -print'
+  register: zabbix_not_purged_conf_files
+  check_mode: no
+  ignore_errors: yes
+  failed_when: False
+  changed_when: False
+
+- name: "Remove configuration files and directories that were not purged in /etc/zabbix/"
+  file: path="{{ item }}" state=absent
+  with_items: zabbix_not_purged_conf_files.stdout_lines
+
+- name: "List residual zabbix configuration files and folders in /etc/zabbix"
+  shell: 'find /etc/zabbix -print | grep -v "^/etc/zabbix$"'
+  register: zabbix_residual_conf
+  check_mode: no
+  ignore_errors: yes
+  failed_when: False
+  changed_when: False
+
+#- debug: var=zabbix_residual_conf.stdout_lines
+
+- name: "Remove /etc/zabbix directory if empty"
+  file: path="/etc/zabbix" state=absent
+  when: zabbix_residual_conf.stdout_lines == []
+
+- name: "List log files that were not purged in /var/log/zabbix/"
+  command: 'find /var/log/zabbix/ -name "*zabbix_agent*" -print'
+  register: zabbix_not_purged_log_files
+  check_mode: no
+  ignore_errors: yes
+  failed_when: False
+  changed_when: False
+
+- name: "Remove log files that were not purged in /var/log/zabbix/"
+  file: path="{{ item }}" state=absent
+  with_items: zabbix_not_purged_log_files.stdout_lines
+
+- name: "Remove recursively log directory that were not purged : /var/log/zabbix-agent"
+  file: path="/var/log/zabbix-agent" state=absent

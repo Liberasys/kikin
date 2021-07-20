@@ -1,6 +1,6 @@
 # {{ ansible_managed }}
 
-{% for hkey, hvalue in hostvars.iteritems() %}
+{% for hkey, hvalue in hostvars.items() %}
 Host {{ hkey }}
     Hostname {% if hvalue['ansible_forced_ip'] is defined and hvalue['ansible_forced_ip'] != '' %}{{ hvalue['ansible_forced_ip'] }}
 {% else %}{{ hkey }}

@@ -22,15 +22,15 @@
     local_username="{{ lookup('env', 'USER') }}"
     local_user_home_path="{{ lookup('env', 'HOME') }}"
     local_runpath="{{ lookup('env', 'PWD') }}"
-    local_user_private_keyfile_subpath="{% for ukey, uvalue in users_present_db.iteritems() -%}
+    local_user_private_keyfile_subpath="{% for ukey, uvalue in users_present_db.items() -%}
                                           {% if uvalue['userlogin'] == lookup('env', 'USER') -%}
                                             {% if uvalue['ssh_key_private_filepath'] is defined and uvalue['ssh_key_private_filepath'] != '' -%}{{ uvalue['ssh_key_private_filepath'] }}{% endif -%}
                                           {% endif -%}
                                         {% endfor -%}"
-    user_present_logins="[{% set comma = joiner(',') %}{% for key, value in users_present_db.iteritems() %}{{ comma() }}\'{{ value.userlogin }}\'{% endfor %}]"
+    user_present_logins="[{% set comma = joiner(',') %}{% for key, value in users_present_db.items() %}{{ comma() }}\'{{ value.userlogin }}\'{% endfor %}]"
     all_known_hosts_ssh_public_keys="[
                                        {% set comma = joiner(',') %}
-                                       {% for hkey, hvalue in hostvars.iteritems() %}
+                                       {% for hkey, hvalue in hostvars.items() %}
                                          {% for keytype in hostvars_sshkey_attributes %}
                                            {% if hvalue[keytype] is defined and hvalue[keytype] != '' %}
                                              {{ comma() }} \'{{hvalue[keytype]}}\'

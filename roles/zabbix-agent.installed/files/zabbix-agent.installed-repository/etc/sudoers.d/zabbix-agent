@@ -1,0 +1,6 @@
+zabbix  ALL=NOPASSWD: /etc/zabbix/zabbix_agentd.conf.d/os_linux_liberasys/custom.discovery.disks.perl
+zabbix  ALL=NOPASSWD: /etc/zabbix/zabbix_agentd.conf.d/os_linux_liberasys/custom.discovery.processes.perl
+zabbix  ALL=NOPASSWD: /etc/zabbix/zabbix_agentd.conf.d/os_linux_liberasys/custom.discovery.services.tcp.perl
+zabbix  ALL=NOPASSWD: /etc/zabbix/zabbix_agentd.conf.d/os_linux_liberasys/custom.discovery.services.udp.perl
+zabbix  ALL=NOPASSWD: /usr/bin/cksum /root/.ssh/authorized_keys
+zabbix  ALL=NOPASSWD: /usr/bin/cksum /etc/shadow 

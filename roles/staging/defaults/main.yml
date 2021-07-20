@@ -13,6 +13,7 @@ staging_packages:
   - apt-dater-host
   - rsync
   - qemu-guest-agent
+  - net-tools
 
 apply_template_search_paths:
   - '{{ ansible_distribution | lower }}-{{ ansible_distribution_version | lower }}'

@@ -1,11 +1,12 @@
 ---
 
 - hosts: all:!removed
-  name: configure users
+  name: demo
   roles:
     - { role: users_configured }
     - { role: local_ssh_configured }
     - { role: staging }
+   #- { role: zabbix-agent.installed }
   tags:
     - users
 

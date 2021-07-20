@@ -1,0 +1,4 @@
+---
+zabbix_agent_main_conffile_path: "/etc/zabbix/zabbix_agentd.conf"
+zabbix_agent_minimal_version: "3.0"
+

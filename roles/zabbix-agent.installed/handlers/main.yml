@@ -1,0 +1,9 @@
+---
+
+
+- name: Restart Zabbix agent
+  service: name="zabbix-agent" state=restarted
+  failed_when: False
+  listen: hdl_restart_zabbix_agent
+
+

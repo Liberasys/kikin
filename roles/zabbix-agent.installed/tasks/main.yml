@@ -1,0 +1,124 @@
+---
+# Only Debian OS family is managed for the moment
+- assert: { that: "ansible_os_family == 'Debian'" }
+- assert: { that: "ansible_pkg_mgr == 'apt'" }
+
+# Load a variable file based on the OS type, or a default if not found.
+- include_vars: '{{ item }}'
+  with_first_found:
+   - files:
+     - '{{ ansible_distribution | lower }}-{{ ansible_distribution_version | lower }}.yml'
+     - '{{ ansible_distribution | lower }}-{{ ansible_distribution_major_version | lower }}.yml'
+     - '{{ ansible_distribution | lower }}.yml'
+     - '{{ ansible_os_family | lower }}.yml'
+     - default.yml
+     paths:
+       - ../vars
+
+- set_fact: templates_to_set="[]"
+
+- set_fact: templates_to_set="{{templates_to_set}} + ['Template OS Linux']"
+  when: node_datalogging_linux_generic_os_monitoring | default(False) == True
+
+- set_fact: templates_to_set="{{templates_to_set}} + {{ [item | trim] }}"
+  with_items: "{{ node_datalogging_additional_templates.split(',') }}"
+  when:
+    - node_datalogging_additional_templates is defined
+    - node_datalogging_additional_templates != None
+    - node_datalogging_additional_templates != ""
+
+- name: "Get zabbix-agent version"
+  shell: 'dpkg -s zabbix-agent | grep "^Version" | sed -re "s/^.*:([0-9]+\.[0-9]+).*/\1/"'
+  check_mode: no
+  register: zabbix_agent_version
+  failed_when: False
+  changed_when: False
+
+# XXXXXXX
+#TASK [zabbix-agent.installed : Include purge zabbix-agent package : if it is an old version or if package not present.] **********************************************************************
+#  fatal: [dl-staging]: FAILED! => {"msg": "The conditional check 'zabbix_agent_version.stdout is defined and zabbix_agent_version.stdout is version('3.2', '<')' failed. The error was: Version comparison: LooseVersion instance has no attribute 'version'\n\nThe error appears to have been in '/home/ansible-infra/ansible/roles/zabbix-agent.installed/tasks/main.yml': line 43, column 3, but may\nbe elsewhere in the file depending on the exact syntax problem.\n\nThe offending line appears to be:\n\n\n- name: \"Include purge zabbix-agent package : if it is an old version or if package not present.\"\n  ^ here\nThis one looks easy to fix.  It seems that there is a value started\nwith a quote, and the YAML parser is expecting to see the line ended\nwith the same kind of quote.  For instance:\n\n    when: \"ok\" in result.stdout\n\nCould be written as:\n\n   when: '\"ok\" in result.stdout'\n\nOr equivalently:\n\n   when: \"'ok' in result.stdout\"\n"}
+#- name: "Include purge zabbix-agent package : if it is an old version or if package not present."
+#  include: '{{ role_path }}/../zabbix-agent.absent/tasks/main.yml'
+#  when:
+#    - zabbix_agent_version.stdout is defined and zabbix_agent_version.stdout == ""
+#    - zabbix_agent_version.stdout is defined and zabbix_agent_version.stdout is version('3.2', '<')
+
+- name: "Install zabbix-agent latest package."
+  apt: name=zabbix-agent cache_valid_time=86400 state=latest
+
+#- name: "Server= configuration."
+#  action: lineinfile dest={{ zabbix_agent_main_conffile_path }} regexp="^Server=" line="Server={% if ansible_fqdn == zabix_server_hostname %}127.0.0.1{% else %}{{zabix_server_ip}}{% endif %}"
+#  notify: hdl_restart_zabbix_agent
+
+- name: "Server= configuration."
+  action: lineinfile dest={{ zabbix_agent_main_conffile_path }} regexp="^Server=" line="Server={{ zabbix_server_target }}"
+  when: node_zabbix_proxy | default(False) == False
+  notify: hdl_restart_zabbix_agent
+
+- name: "ServerActive= configuration."
+  action: lineinfile dest={{ zabbix_agent_main_conffile_path }} regexp="^ServerActive=" line="ServerActive={{ zabbix_server_target }}:10051"
+  notify: hdl_restart_zabbix_agent
+
+- name: "Hostname= configuration."
+  action: lineinfile dest={{ zabbix_agent_main_conffile_path }} regexp="^Hostname=" line="Hostname={{ new_node_fqdn | default(ansible_fqdn) }}"
+  notify: hdl_restart_zabbix_agent
+
+- name: "HostMetadataItem= configuration"
+  action: lineinfile dest={{ zabbix_agent_main_conffile_path }} regexp="^HostMetadataItem=" insertafter="^# HostMetadataItem=" line="HostMetadataItem=system.uname"
+  notify: hdl_restart_zabbix_agent
+
+- name: "BufferSend= configuration"
+  action: lineinfile dest={{ zabbix_agent_main_conffile_path }} regexp="^BufferSend=" insertafter="^# BufferSend=5$" line="BufferSend=5"
+  notify: hdl_restart_zabbix_agent
+
+- name: "Add Zabbix custom items and scripts"
+  synchronize:
+    src: zabbix-agent.installed-repository/etc/zabbix/zabbix_agentd.conf.d/
+    dest: /etc/zabbix/zabbix_agentd.conf.d/
+    #set_remote_user: no
+    #use_ssh_args: yes
+    delete: no
+    recursive: yes
+    verify_host: no
+  notify: hdl_restart_zabbix_agent
+
+- name: "Add Template OS Linux Liberasys scripts sudoers configuration"
+  copy:
+    src: zabbix-agent.installed-repository/etc/sudoers.d/zabbix-agent
+    dest: /etc/sudoers.d/zabbix-agent
+    owner: root
+    group: root
+    mode: 0440
+  notify: hdl_restart_zabbix_agent
+
+- name: "Zabbix server groups created for the node"
+  become: no
+  local_action:
+    module: zabbix_group
+    server_url: "{{ zabbix_server_zabbix_server_url }}"
+    login_user: "{{ zabbix_server_zabbix_server_username }}"
+    login_password: "{{ zabbix_server_zabbix_server_password }}"
+    state: present
+    host_groups: "{{ agroup | default(group_names) }}"
+
+- name: "Zabbix agent configuration on the Zabbix server"
+  become: no
+  local_action:
+    module: zabbix_host
+    server_url: "{{ zabbix_server_zabbix_server_url }}"
+    login_user: "{{ zabbix_server_zabbix_server_username }}"
+    login_password: "{{ zabbix_server_zabbix_server_password }}"
+    host_name: "{{ new_node_fqdn | default(ansible_fqdn) }}"
+#    visible_name: "{{ new_node_fqdn | default(ansible_host) }}"
+    host_groups: "{{ agroup | default(group_names) }}"
+    link_templates: "{{templates_to_set}}"
+    status: enabled
+    state: present
+    inventory_mode: automatic
+    interfaces:
+      - type: 1
+        main: 1
+        useip: "{% if zabbix_agent_target is defined and zabbix_agent_target != \"\" %}1{% else %}0{% endif %}"
+        ip: "{{ zabbix_agent_target | default(\"127.0.0.1\") }}"
+        dns: "{{ ansible_fqdn }}"
+        port: "10050"
