@@ -1,0 +1,6 @@
+grep iteritems ==> items
+
+check host number : 
+    - name: Check for single host
+      fail: msg="This playbook must be ran without inventory and without hosts ':' ansible-playbook ./generate_local_ssh_config.yml --inventory=/dev/null"
+      when: ( play_hosts | length ) > 1

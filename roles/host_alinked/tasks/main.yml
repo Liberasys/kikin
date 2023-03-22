@@ -123,6 +123,7 @@
   run_once: true
   become: no
   when: ansible_host != "localhost"
+  ignore_errors: yes
 
 - debug:
     msg: "Key : {{ ssh_keyscan.stdout_lines[0] }}"
@@ -153,6 +154,7 @@
   run_once: true
   become: no
   when: ansible_host != "localhost"
+  ignore_errors: yes
 
 - name: "Store host SSH server public key : ecdsa"
   lineinfile:
@@ -175,6 +177,7 @@
   delegate_to: 127.0.0.1
   become: no
   when: ansible_host != "localhost"
+  ignore_errors: yes
 
 - name: "Store host SSH server public key : ed25519"
   lineinfile:
@@ -198,6 +201,7 @@
   run_once: true
   become: no
   when: ansible_host != "localhost"
+  ignore_errors: yes
 
 - name: "Store host SSH server public key : rsa"
   lineinfile:

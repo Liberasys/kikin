@@ -1,6 +1,6 @@
 ---
 - name: Add users on hosts
-  hosts: all:!removed
+  hosts: all
   roles:
     - { role: users_configured }
 ...

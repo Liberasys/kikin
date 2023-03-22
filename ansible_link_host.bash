@@ -232,7 +232,8 @@ fi
 
 # compute ansible-playbook arguments
 if [[ $ASUDO == "yes" ]]; then
-  ASUDOARG="--sudo"
+  #ASUDOARG="--sudo"
+  ASUDOARG="--become-user 'root'"
 else
   ASUDOARG=""
 fi

@@ -1,6 +1,6 @@
 ---
 
-- hosts: all:!removed
+- hosts: all
   name: demo
   roles:
     - { role: users_configured }

@@ -21,7 +21,7 @@
 - name: "Add host to remove in removed hosts inventory file"
   lineinfile:
     dest: "{{removed_hosts_inventory}}"
-    line: "{{host2del}} removed_date={{datetime_tag.stdout}}"
+    line: "{{host2del}}"
     backup: yes
     create: yes
     state: present
@@ -47,14 +47,14 @@
   become: no
   changed_when: false
 
-#- debug:
-#    msg: "List of inventory files : {{inventory_files_list.stdout_lines}}"
+- debug:
+    msg: "List of inventory files : {{inventory_files_list.stdout_lines}}"
 
-#- debug:
-#    msg: '{{ host2del | replace(''.'', ''\.'') }}'
+- debug:
+    msg: '{{ host2del | replace(''.'', ''\.'') }}'
 
-#- debug:
-#    msg: "cat {{removed_hosts_inventory}}"
+- debug:
+    msg: "cat {{removed_hosts_inventory}}"
 
 - name: "Get unlinked hosts list"
   command: cat {{removed_hosts_inventory}}

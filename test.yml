@@ -1,0 +1,18 @@
+---
+
+- hosts: all
+  name: configure users
+
+  pre_tasks:
+    - debug: var=inventory_file
+    - debug: var=inventory_dir
+
+
+
+
+
+
+
+
+
+...

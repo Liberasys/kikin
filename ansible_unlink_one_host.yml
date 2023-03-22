@@ -35,7 +35,7 @@
 
     - name: Check for single host
       fail: msg="This playbook must be ran without inventory and without hosts ':' ansible-playbook ./ansible_unlink_one_host.yml --inventory=/dev/null"
-      when: ( play_hosts|length ) != 0
+      when: ( play_hosts|length ) != 1
 
     - name: "Check for localhost play"
       fail: msg="This playbook must be ran without inventory and without hosts ':' ansible-playbook ./ansible_unlink_one_host.yml --inventory=/dev/null"

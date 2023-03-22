@@ -9,10 +9,9 @@
 
 - name: Install base packages - software staging
   apt:
-    name: "{{ item }}"
+    name: "{{ query('flattened', '{{staging_packages}}') }}"
     state: "latest"
     update_cache: "yes"
-  with_flattened: "{{staging_packages}}"
 
 
 - name: Apply /root/.bashrc template
@@ -56,6 +55,7 @@
       - "sysctl.j2"
       paths: "{{ apply_template_search_paths }}"
   register: sysctl_result
+  when: not 'proxmox' in group_names
 
 - name: Update kernel variables from sysctl.conf
   shell: sysctl -p

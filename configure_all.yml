@@ -1,6 +1,6 @@
 ---
 
-- hosts: all:!removed
+- hosts: all
   name: configure users
   become: yes
   roles:
